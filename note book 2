@@ -1,0 +1,102 @@
+Примеры команд
+Рассмотрим несколько практических примеров, показывающих, как можно использовать сценарий Search-Registry.ps1. Не забывайте, что хотя на странице код может занимать несколько строк (это продиктовано размерами колонок текста), вам следует вводить его в окне PowerShell одной строкой.
+
+Search-Registry -StartKey HKCR -Pattern "Word\.Document\.\d» -MatchKey
+Эта команда сканирует реестр локального компьютера, начиная с ветви HKEY_ CLASSES_ROOT, в поисках шаблона -Word\.Document\.\d?. В регулярных выражениях точка (.) соответствует любому символу, обратная косая черта означает «следующий символ нужно воспринимать буквально». Таким образом, -\? означает -?. Обратная косая черта, стоящая перед буквой d (\d), означает «любое десятичное число»; таким образом, данная операция поиска выявит подразделы реестра с именем Word.Document.n (где n — некое число). Если данная команда возвратит совпадение, это, по-видимому, будет означать, что в локальной системе имеется приложение, способное открывать документы Microsoft Word.
+
+Search-Registry -StartKey HKLM -Pattern $ENV: USERNAME -MatchData
+Эта команда осуществляет в ветви HKEY_ LOCAL_MACHINE реестра локального компьютера поиск любых данных реестра, содержащих имя текущего пользователя.
+
+Search-Registry -StartKey HKLM\
+SOFTWARE\Microsoft\Windows\
+CurrentVersion\Policies\System
+-Pattern EnableLinkedConnections
+-MatchValue
+Данная команда определяет, задано ли на локальном компьютере значение реестра EnableLinkedConnections. Узнать, для каких целей может понадобиться это значение, вы можете, ознакомившись с подготовленной специалистами Microsoft статьей -Programs may be unable to access some network locations after you turn on User Account Control in Windows Vista or in Windows 7, по адресу support.microsoft.com/kb/937624.
+
+Get-Content Computers.txt|
+Search-Registry HKLM\SOFTWARE\
+Microsoft\Windows\CurrentVersion\
+Policies\System -Pattern
+EnableLinkedConnections -MatchValue | Export-CSV C:\Reports\
+EnableLinkedConnections.csv
+-NoTypeInformation
+
+PIPELINEINPUT = (-not $PSBOUNDPARAMETERS.ContainsKey(«ComputerName»)) -and
+(-not $ComputerName)
+# Throw an error if -Pattern is not valid
+try {
+«" -match $Pattern | out-null
+}
+catch [System.Management.Automation.RuntimeException] {
+throw "-Pattern parameter not valid — $($_.Exception.Message)»
+}
+# You must specify at least one matching criteria
+if (-not ($MatchKey -or $MatchValue -or $MatchData)) {
+throw «You must specify at least one of: -MatchKey -MatchValue -MatchData»
+}
+# Interpret zero as «maximum possible number of matches»
+if ($MaximumMatches -eq 0) { $MaximumMatches = [UInt32]::MaxValue }
+# These two hash tables speed up lookup of key names and hive types
+$HiveNameToHive = @{
+«HKCR» = [Microsoft.Win32.RegistryHive] «ClassesRoot»;
+«HKEY_CLASSES_ROOT» = [Microsoft.Win32.RegistryHive] «ClassesRoot»;
+«HKCU» = [Microsoft.Win32.RegistryHive] «CurrentUser»;
+«HKEY_CURRENT_USER» = [Microsoft.Win32.RegistryHive] «CurrentUser»;
+«HKLM» = [Microsoft.Win32.RegistryHive] «LocalMachine»;
+«HKEY_LOCAL_MACHINE» = [Microsoft.Win32.RegistryHive] «LocalMachine»;
+«HKU» = [Microsoft.Win32.RegistryHive] «Users»;
+«HKEY_USERS» = [Microsoft.Win32.RegistryHive] «Users»;
+}
+$HiveToHiveName = @{
+[Microsoft.Win32.RegistryHive] «ClassesRoot» = «HKCR»;
+[Microsoft.Win32.RegistryHive] «CurrentUser» = «HKCU»;
+[Microsoft.Win32.RegistryHive] «LocalMachine» = «HKLM»;
+[Microsoft.Win32.RegistryHive] «Users» = «HKU»;
+}
+# Search for 'hive:\startkey'; ':' and starting key optional
+$StartKey | select-string «([^:\\]+):?\\?(.+)?» | foreach-object {
+$HiveName = $_.Matches[0].Groups[1].Value
+$StartPath = $_.Matches[0].Groups[2].Value
+}
+if (-not $HiveNameToHive.ContainsKey($HiveName)) {
+throw «Invalid registry path»
+} else {
+$Hive = $HiveNameToHive[$HiveName]
+$HiveName = $HiveToHiveName[$Hive]
+}
+# Recursive function that searches the registry
+function search-registrykey($computerName, $rootKey, $keyPath, [Ref] $matchCount) {
+# Write error and return if unable to open the key path as read-only
+try {
+$subKey = $rootKey.OpenSubKey($keyPath, $FALSE)
+}
+catch [System.Management.Automation.MethodInvocationException] {
+$message = $_.Exception.Message
+write-error «$message — $HiveName\$keyPath»
+return
+}
+# Write error and return if the key doesn't exist
+if (-not $subKey) {
+write-error «Key does not exist: $HiveName\$keyPath» -category ObjectNotFound
+return
+}
+# Search for value and/or data; -MatchValue also returns the data
+if ($MatchValue -or $MatchData) {
+if ($matchCount.Value -lt $MaximumMatches) {
+foreach ($valueName in $subKey.GetValueNames()) {
+$valueData = $subKey.GetValue($valueName)
+if (($MatchValue -and ($valueName -match $Pattern)) -or ($MatchData -and ($valueData -match $Pattern))) {
+«" | select-object `
+@{N="ComputerName»; E={$computerName}},
+@{N="Key"; E={"$HiveName\$keyPath"}},
+@{N="Value"; E={$valueName}},
+@{N="Data"; E={$valueData}}
+$matchCount.Value++
+}
+if ($matchCount.Value -eq $MaximumMatches) { break }
+}
+}
+}
+# Iterate and recurse through subkeys; if -MatchKey requested, output
+# objects only report computer a
