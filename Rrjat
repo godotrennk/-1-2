@@ -1,0 +1,40 @@
+ККОФЕ 
+В этом разделе представлен обзор способов получения экземпляров класса с сервера CIM.
+
+В этом сценарии командлет получает ноль, один или несколько экземпляров класса. Существует несколько способов получения экземпляров класса с сервера CIM.
+
+Получение экземпляра
+Экземпляры запросов
+Перечисляемые объекты
+Перечислите ассоциированные экземпляры
+В настоящее время CDXML не поддерживает функцию GetInstance для получения конкретного экземпляра. Фильтрацию сервера можно выполнить с помощью QueryInstances, однако CDXML поддерживает только запросы WQL.
+
+Для определения командлета GET на основе перечисления и запроса требуется следующая информация.
+
+Метаданные, описывающие свойства командлета.
+
+Глагол
+Существительное
+ХелпУРИ
+
+> - HKCR или HKEY_CLASSES_ROOT
+>> - HKCU или HKEY_CURRENT_USER
+>> - HKLM или HKEY_LOCAL_MACHINE
+>> - HKU или HKEY_USERS- HKCR или HKEY_CLASSES_ROOT
+>> - HKCU или HKEY_CURRENT_USER
+>> - HKLM или HKEY_LOCAL_MACHINE
+>> - HKU или HKEY_USERS- HKCR или HKEY_CLASSES_ROOT
+>> - HKCU или HKEY_CURRENT_USER
+>> - HKLM или HKEY_LOCAL_MACHINE
+>> - HKU или HKEY_USERS
+
+PS Dс:\> - HKCR или HKEY_CLASSES_ROOT
+>> - HKCU или HKEY_CURRENT_USER
+>> - HKLM или HKEY_LOCAL_MACHINE
+>> - HKU или HKEY_USERS- HKCR или HKEY_CLASSES_ROOT
+>> - HKCU или HKEY_CURRENT_USER
+>> - HKLM или HKEY_LOCAL_MACHINE
+>> - HKU или HKEY_USERS- HKCR или HKEY_CLASSES_ROOT
+>> - HKCU или HKEY_CURRENT_USER
+>> - HKLM или HKEY_LOCAL_MACHINE
+>> - HKU или HKEY_USERS
